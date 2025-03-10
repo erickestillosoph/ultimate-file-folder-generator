@@ -33,6 +33,28 @@ source ~/.zshrc
 
 #### For Windows add .bat file and search for where to add it on your system
 
+Open a notepad and paste the following:
+
+```bat
+@echo off
+node %USERPROFILE%\scripts\createComponent.js %*
+```
+
+save the file name as `create-component.bat` in a folder that is added to your system's PATH (C:\Users\YourUser\scripts\).
+
+Add this folder to the Windows PATH:
+
+Press `Win + R`, type `sysdm.cpl`, and hit Enter.
+Go to Advanced > Environment Variables.
+Under System variables, find and select Path, then click Edit.
+Click New, and add `C:\Users\YourUser\scripts\`
+Click OK, then restart your terminal.
+open a new cmd terminal run
+
+```bash
+create-component ReplaceNameOfTheComponentHere
+```
+
 ## Usage
 
 Please check this out first what command samples to use!
