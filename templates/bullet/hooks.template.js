@@ -6,10 +6,10 @@
  * @param {number} index - Index for multi-file generation (0-based)
  * @returns {string} Generated file content
  */
-module.exports = function(component, index) {
+module.exports = function (component, index) {
   const { name, kebabName } = component;
   const suffix = index > 0 ? `${index + 1}` : "";
-  
+
   return `import { createSignal, createEffect } from '@bullet-js/core';
 
 /**
