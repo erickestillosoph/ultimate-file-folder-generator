@@ -22,7 +22,7 @@ open ~/.zshrc
 ```
 
 ```bash
-alias create-component="node ~/YourDirectoryFolder/scripts/createComponent.js"
+alias create-component="node ~/YourDirectoryFolder/ultimate-file-folder-generator/createComponent.js"
 ```
 
 then save the run:
@@ -37,7 +37,7 @@ Open a notepad and paste the following:
 
 ```bat
 @echo off
-node %USERPROFILE%\scripts\createComponent.js %*
+node %USERPROFILE%\ultimate-file-folder-generator\createComponent.js %*
 ```
 
 save the file name as `create-component.bat` in a folder that is added to your system's PATH (C:\Users\YourUser\scripts\).
@@ -47,7 +47,7 @@ Add this folder to the Windows PATH:
 Press `Win + R`, type `sysdm.cpl`, and hit Enter.
 Go to Advanced > Environment Variables.
 Under System variables, find and select Path, then click Edit.
-Click New, and add `C:\Users\YourUser\scripts\`
+Click New, and add `C:\Users\YourUser\ultimate-file-folder-generator\`
 Click OK, then restart your terminal.
 open a new cmd terminal run
 
