@@ -12,6 +12,8 @@ Generator Files and Folders
 git clone https://github.com/erickestillosoph/ultimate-file-folder-generator.git
 ```
 
+#### For Mac Users
+
 on the `.zshrc` folder add this alias
 where to open the .zshrc
 
@@ -28,6 +30,8 @@ then save the run:
 ```bash
 source ~/.zshrc
 ```
+
+#### For Windows add .bat file and search for where to add it on your system
 
 ## Usage
 
