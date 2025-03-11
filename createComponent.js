@@ -27,6 +27,7 @@ Folder prefixes:
   ui = ui             - UI components
   --template-fsd      - Use Feature-Sliced Design templates
   --template-bullet   - Use Bullet templates
+  --template-mimir    - Use Mimir templates
   help                - Display this help message
   `);
   process.exit(0);
@@ -52,7 +53,7 @@ for (const arg of args) {
 
 if (!componentName) {
   console.log(
-    "❌ Please provide a component name!\nExample: node ~/scripts/createComponent.js MyComponent [--template-fsd | --template-bullet]"
+    "❌ Please provide a component name!\nExample: node ~/scripts/createComponent.js MyComponent [--template-fsd | --template-bullet | --template-mimir]"
   );
   process.exit(1);
 }
@@ -72,6 +73,8 @@ function loadTemplate(templateType, component, index) {
     templateSubdir = "fsd";
   } else if (flags.has("--template-bullet")) {
     templateSubdir = "bullet";
+  } else if (flags.has("--template-mimir")) {
+    templateSubdir = "mimir";
   } else {
     templateSubdir = "default";
   }
@@ -187,6 +190,8 @@ function createDefaultTemplateFile(templateType, filePath, templateSubdir) {
         templateContent = `// Default Bullet template`;
         break;
     }
+  } else if (templateSubdir === "mimir") {
+    templateContent = `// Mimir Template for ${templateType} files`;
   } else {
     templateContent = `// Default template for ${templateType} files`;
   }
@@ -216,6 +221,16 @@ function generateBuiltInTemplate(type, component, index, templateSubdir) {
         return `// Bullet fallback template for ${name} container`;
       default:
         return `// Bullet fallback template for ${name} ${type}`;
+    }
+  } else if (templateSubdir === "mimir") {
+    switch (type) {
+      case "hooks":
+        return `// Mimir fallback template for ${name} hook`;
+      case "container":
+      case "namedContainer":
+        return `// Mimir fallback template for ${name} container`;
+      default:
+        return `// Mimir fallback template for ${name} ${type}`;
     }
   } else {
     switch (type) {
@@ -255,7 +270,6 @@ function generateContainerContent(componentName) {
 }
 
 function parseFileCountArgs(args) {
-  // Initialize counts for both subfolder keys and new root files.
   const fileCountMap = {
     hooks: 0,
     forms: 0,
@@ -264,22 +278,22 @@ function parseFileCountArgs(args) {
     mutations: 0,
     root: 0,
     validations: 0,
-    container: 0, // legacy container files (rt)
-    page: 0, // new: root page file(s)
-    namedContainer: 0, // new: root container file(s) with component name
+    container: 0,
+    page: 0,
+    namedContainer: 0,
   };
 
   const folderPrefixMap = {
     hk: "hooks",
     fm: "forms",
-    pg: "page", // now maps to root page file count
+    pg: "page",
     ui: "ui",
     qy: "query",
     ms: "mutations",
     rp: "root",
     vl: "validations",
-    rt: "container", // legacy container files
-    ct: "namedContainer", // new container file(s)
+    rt: "container",
+    ct: "namedContainer",
   };
 
   let hasCommandArgs = false;
@@ -287,13 +301,13 @@ function parseFileCountArgs(args) {
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
     if (arg.startsWith("--")) continue;
-    // Skip the component name (first argument)
+
     if (i === 0 || (i > 0 && args[0].startsWith("--") && i === 1)) continue;
 
     const prefix = arg.substring(0, 2).toLowerCase();
     const countStr = arg.substring(2);
     let count = parseInt(countStr, 10);
-    // For new flags, if no numeric value is specified, default to 1.
+
     if (folderPrefixMap[prefix]) {
       if (
         (prefix === "pg" || prefix === "ct" || prefix === "rt") &&
@@ -308,11 +322,10 @@ function parseFileCountArgs(args) {
     }
   }
 
-  // Defaults: if no pg (page) was specified, create one page file.
   if (fileCountMap["page"] === 0) {
     fileCountMap["page"] = 1;
   }
-  // By default create one named container file if not provided.
+
   if (fileCountMap["namedContainer"] === 0) {
     fileCountMap["namedContainer"] = 1;
   }
@@ -323,7 +336,7 @@ const projectRoot = process.cwd();
 const baseFolder = path.join(projectRoot, componentName);
 const kebabComponentName = toKebabCase(componentName);
 
-// Exclude "pages" from subfolders since page files will be created in the root.
+// Exclude "pages" from s
 const subfolders = [
   "hooks",
   "forms",
@@ -352,7 +365,7 @@ function getFileName(folder, kebabName, index) {
       return `${kebabName}-validation${indexSuffix}.schema.ts`;
     case "root":
       return `${componentName}.${folder}${indexSuffix}.tsx`;
-    case "container": // legacy container files if provided via rt
+    case "container":
       return `container${indexSuffix}.tsx`;
     default:
       return `${componentName}.${folder}${indexSuffix}.tsx`;
@@ -360,7 +373,6 @@ function getFileName(folder, kebabName, index) {
 }
 
 function createFolderStructure(basePath, folders, fileCountMap) {
-  // Process subfolders for hooks, forms, mutations, query, validations, and ui.
   folders.forEach((folder) => {
     const fileCount = fileCountMap[folder] || 0;
     if (fileCount === 0) return;
@@ -386,7 +398,6 @@ function createFolderStructure(basePath, folders, fileCountMap) {
     }
   });
 
-  // Create root page file(s) — controlled by "pg" flag.
   const pageCount = fileCountMap["page"] || 1;
   for (let i = 0; i < pageCount; i++) {
     const pageFileName = i === 0 ? "page.tsx" : `page-${i + 1}.tsx`;
@@ -400,7 +411,6 @@ function createFolderStructure(basePath, folders, fileCountMap) {
     }
   }
 
-  // Create named container file(s) — controlled by "ct" flag.
   const namedContainerCount = fileCountMap["namedContainer"] || 1;
   for (let i = 0; i < namedContainerCount; i++) {
     const namedContainerFileName =
@@ -417,7 +427,6 @@ function createFolderStructure(basePath, folders, fileCountMap) {
     }
   }
 
-  // Legacy: create additional root files if "rp" flag was given.
   const rootFileCount = fileCountMap["root"] || 0;
   for (let i = 1; i < rootFileCount; i++) {
     const additionalFilePath = path.join(
