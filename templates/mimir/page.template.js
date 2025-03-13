@@ -7,7 +7,7 @@
  * @returns {string} Generated file content
  */
 module.exports = function (component, index) {
-  const { name, kebabName } = component;
+  const { name } = component;
   const typeName = `${name}Type`;
   return `
 'use client'
