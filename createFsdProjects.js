@@ -12,7 +12,8 @@ Usage examples:
   create-component MyComponent hk2 pg2 --template-fsd      # Create hooks and 2 page files in the root folder with FSD templates
   create-component MyComponent rp3                       # Create additional root files (legacy "rp" generation)
   create-component MyComponent ct                      # Create one my-component-container.tsx file in the root folder
-  create-component MyComponent ct2                     # Create 2 my-component-container.tsx files in the root folder
+  cfsd MyComponent ct2                     # Create 2 my-component-container.tsx files in the root folder
+  cfsd MyComponent qy2 ms2 sb1 fg1 hk2 pg1 ui2 vl2 ix1 --template-flat-client
 
 Folder prefixes:
   hk = hooks          - Custom React hooks
@@ -25,6 +26,7 @@ Folder prefixes:
   vl = validations    - Validation functions
   rt = container      - (Legacy) Container component in the root folder
   ui = ui             - UI components
+  ix = index          - Index files (typically for re-exports)
   --template-fsd      - Use Feature-Sliced Design templates
   --template-bullet   - Use Bullet templates
   --template-mimir    - Use Mimir templates
@@ -236,81 +238,47 @@ function createDefaultTemplateFile(templateType, filePath, templateSubdir) {
 function generateBuiltInTemplate(type, component, index, templateSubdir) {
   const { name } = component;
   if (templateSubdir === "fsd") {
-    switch (type) {
+    switch (templateType) {
       case "hooks":
-        return `// FSD fallback template for ${name} hook`;
+        return `// FSD Template for ${name} hook`;
       case "container":
       case "namedContainer":
         return `// FSD fallback template for ${name} container`;
       default:
-        return `// FSD fallback template for ${name} ${type}`;
+        return `// Default FSD template for ${name}`;
     }
   } else if (templateSubdir === "bullet") {
-    switch (type) {
+    switch (templateType) {
       case "hooks":
-        return `// Bullet fallback template for ${name} hook`;
+        return `// Bullet Template for ${name} hook`;
       case "container":
       case "namedContainer":
         return `// Bullet fallback template for ${name} container`;
       default:
-        return `// Bullet fallback template for ${name} ${type}`;
+        return `// Default Bullet template for ${name}`;
     }
   } else if (templateSubdir === "mimir") {
-    switch (type) {
-      case "hooks":
-        return `// Mimir fallback template for ${name} hook`;
-      case "container":
-      case "namedContainer":
-        return `// Mimir fallback template for ${name} container`;
-      default:
-        return `// Mimir fallback template for ${name} ${type}`;
-    }
-  } else if (templateSubdir === "flat") {
-    switch (type) {
-      case "hooks":
-        return `// Flat fallback template for ${name} hook`;
-      case "container":
-      case "namedContainer":
-        return `// Flat fallback template for ${name} container`;
-      default:
-        return `// Flat fallback template for ${name} ${type}`;
-    }
+    return `// Mimir Template for ${name} ${type}`;
   } else if (templateSubdir === "flat-client") {
-    switch (type) {
-      case "hooks":
-        return `// Flat Client fallback template for ${name} hook`;
-      case "container":
-      case "namedContainer":
-        return `// Flat Client fallback template for ${name} container`;
-      default:
-        return `// Flat Client fallback template for ${name} ${type}`;
-    }
+    return `// Flat Client Template for ${name} ${type}`;
   } else if (templateSubdir === "flat-server") {
-    switch (type) {
-      case "hooks":
-        return `// Flat Server fallback template for ${name} hook`;
-      case "container":
-      case "namedContainer":
-        return `// Flat Server fallback template for ${name} container`;
-      default:
-        return `// Flat Server fallback template for ${name} ${type}`;
-    }
+    return `// Flat Server Template for ${name} ${type}`;
   } else if (templateSubdir === "flat-prisma") {
-    switch (type) {
-      case "hooks":
-        return `// Flat Prisma fallback template for ${name} hook`;
-      case "container":
-      case "namedContainer":
-        return `// Flat Prisma fallback template for ${name} container`;
-      default:
-        return `// Flat Prisma fallback template for ${name} ${type}`;
-    }
+    return `// Flat Prisma Template for ${name} ${type}`;
   } else {
-    return `// Default fallback template for ${name} ${type}`;
+    return `// Default template for ${name} ${type}`;
   }
 }
 
 function generateFileContent(folder, componentName, index) {
+  const component = {
+    name: componentName,
+    kebabName: toKebabCase(componentName),
+  };
+  return loadTemplate(folder, component, index);
+}
+
+function getFileName(folder, componentName, index) {
   const component = {
     name: componentName,
     kebabName: toKebabCase(componentName),
@@ -348,6 +316,7 @@ function parseFileCountArgs(args) {
     page: 0,
     namedContainer: 0,
     fragments: 0,
+    index: 0,
   };
 
   const folderPrefixMap = {
@@ -363,6 +332,7 @@ function parseFileCountArgs(args) {
     rt: "container",
     ct: "namedContainer",
     fg: "fragments",
+    ix: "index",
   };
 
   let hasCommandArgs = false;
@@ -371,7 +341,8 @@ function parseFileCountArgs(args) {
     const arg = args[i];
     if (arg.startsWith("--")) continue;
 
-    if (i === 0 || (i > 0 && args[0].startsWith("--") && i === 1)) continue;
+    // Skip component name
+    if (i === 0) continue;
 
     const prefix = arg.substring(0, 2).toLowerCase();
     const countStr = arg.substring(2);
@@ -379,7 +350,10 @@ function parseFileCountArgs(args) {
 
     if (folderPrefixMap[prefix]) {
       if (
-        (prefix === "pg" || prefix === "ct" || prefix === "rt") &&
+        (prefix === "pg" ||
+          prefix === "ct" ||
+          prefix === "rt" ||
+          prefix === "ix") &&
         countStr === ""
       ) {
         count = 1;
@@ -391,13 +365,10 @@ function parseFileCountArgs(args) {
     }
   }
 
-  if (fileCountMap["page"] === 0) {
+  if (!hasCommandArgs) {
     fileCountMap["page"] = 1;
   }
 
-  if (fileCountMap["namedContainer"] === 0) {
-    fileCountMap["namedContainer"] = 1;
-  }
   return fileCountMap;
 }
 
@@ -409,31 +380,59 @@ const subfolders = ["hooks", "forms", "validations", "ui"];
 
 const fileCountMap = parseFileCountArgs(args);
 
+const indexFileCount = fileCountMap["index"];
+if (indexFileCount > 0) {
+  for (let i = 0; i < indexFileCount; i++) {
+    const indexName = getFileName("index", kebabComponentName, i);
+    const indexPath = path.join(baseFolder, indexName);
+    ensureDirectoryExists(indexPath); // Ensure the directory exists
+    if (!fs.existsSync(indexPath)) {
+      const indexContent = generateFileContent("index", componentName, i);
+      fs.writeFileSync(indexPath, indexContent, "utf8");
+      console.log(`📄 Created index file: ${indexPath}`);
+    } else {
+      console.log(`✅ Index file already exists: ${indexPath}`);
+    }
+  }
+}
+
 function getFileName(folder, kebabName, index) {
   const indexSuffix = index > 0 ? `-${index + 1}` : "";
   switch (folder) {
     case "hooks":
-      return `use-hook-${kebabName}${indexSuffix}.tsx`;
+      return `use-${kebabName}${indexSuffix}.tsx`;
     case "forms":
-      return `use-hook-${kebabName}-form${indexSuffix}.tsx`;
+      return `use-${kebabName}-form${indexSuffix}.tsx`;
     case "mutations":
-      return `use-${kebabName}-mutation${indexSuffix}.graphql`;
+      return `update-${kebabName}${indexSuffix}.graphql`;
     case "query":
-      return `use-${kebabName}-query${indexSuffix}.graphql`;
+      return `get-${kebabName}${indexSuffix}.graphql`;
     case "subscription":
-      return `use-${kebabName}-subscription${indexSuffix}.graphql`;
+      return `${kebabName}-subscription${indexSuffix}.graphql`;
     case "fragments":
       return `${kebabName}-fragment${indexSuffix}.graphql`;
     case "ui":
-      return `${kebabName}-ui-page${indexSuffix}.tsx`;
+      return `${kebabName}-ui${indexSuffix}.tsx`;
     case "validations":
       return `${kebabName}-validation${indexSuffix}.schema.ts`;
     case "root":
-      return `${componentName}.${folder}${indexSuffix}.tsx`;
+      return `${kebabName}${indexSuffix}.tsx`;
     case "container":
       return `container${indexSuffix}.tsx`;
+    case "index":
+      return `index${indexSuffix}.ts`;
+    case "namedContainer":
+      return `${kebabName}-container${indexSuffix}.tsx`;
     default:
-      return `${componentName}.${folder}${indexSuffix}.tsx`;
+      return `${kebabName}.${folder}${indexSuffix}.tsx`;
+  }
+}
+
+function ensureDirectoryExists(filePath) {
+  const directory = path.dirname(filePath);
+  if (!fs.existsSync(directory)) {
+    fs.mkdirSync(directory, { recursive: true });
+    console.log(`📁 Created directory: ${directory}`);
   }
 }
 
@@ -462,6 +461,16 @@ function createFolderStructure(basePath, folders, fileCountMap) {
       }
     }
   });
+
+  const projectRoot = process.cwd();
+  ensureDirectoryExists(path.join(projectRoot, componentName));
+
+  if (!fs.existsSync(baseFolder)) {
+    fs.mkdirSync(baseFolder, { recursive: true });
+    console.log(`📁 Created component folder: ${baseFolder}`);
+  } else {
+    console.log(`✅ Component folder already exists: ${baseFolder}`);
+  }
 
   const apiTypes = ["query", "mutations", "subscription", "fragments"];
   let needsApiFolder = false;
@@ -517,7 +526,10 @@ if (!fs.existsSync(baseFolder)) {
 
 const pageFileCount = fileCountMap["page"];
 for (let i = 0; i < pageFileCount; i++) {
-  const pageName = i === 0 ? "page.tsx" : `page-${i + 1}.tsx`;
+  const pageName =
+    i === 0
+      ? `${kebabComponentName}-page.tsx`
+      : `${kebabComponentName}-page-${i + 1}.tsx`;
   const pagePath = path.join(baseFolder, pageName);
   if (!fs.existsSync(pagePath)) {
     const pageContent = generatePageContent(componentName);
@@ -531,10 +543,7 @@ for (let i = 0; i < pageFileCount; i++) {
 const namedContainerCount = fileCountMap["namedContainer"];
 if (namedContainerCount > 0) {
   for (let i = 0; i < namedContainerCount; i++) {
-    const containerName =
-      i === 0
-        ? `${kebabComponentName}-container.tsx`
-        : `${kebabComponentName}-container-${i + 1}.tsx`;
+    const containerName = getFileName("namedContainer", kebabComponentName, i);
     const containerPath = path.join(baseFolder, containerName);
     if (!fs.existsSync(containerPath)) {
       const containerContent = generateContainerContent(componentName);
